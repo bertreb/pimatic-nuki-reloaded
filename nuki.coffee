@@ -31,7 +31,7 @@ module.exports = (env) ->
 
       # auto-discovery
       @framework.deviceManager.on('discover', (eventData) =>
-        @framework.deviceManager.discoverMessage 'pimatic-nuki', 'Searching for Nuki Smart Locks.'
+        @framework.deviceManager.discoverMessage 'pimatic-nuki-reloaded', 'Searching for Nuki Smart Locks.'
         @lastId = null
         @bridge.list().then (nukiDevices) =>
           for device in nukiDevices
@@ -45,7 +45,7 @@ module.exports = (env) ->
                 nukiId: String device.nukiId
 
               @framework.deviceManager.discoveredDevice(
-                'pimatic-nuki',
+                'pimatic-nuki-reloaded',
                 "#{deviceConfig.name} (#{deviceConfig.nukiId})",
                 deviceConfig
               )
@@ -82,50 +82,49 @@ module.exports = (env) ->
 
       env.logger.debug "Start constructor Nuki device"
 
+      @addAttribute('battery',
+        description: "Status of the battery"
+        type: "boolean"
+        acronym: "battery"
+        labels: ["ok","critical"]
+      )
       @addAttribute('lock',
         description: "Status of the lock"
         type: "string"
         acronym: "status"
       )
+      env.logger.debug "Attribute battery and lock added"
 
-      env.logger.debug "Attribute lock added"
+      @_battery = laststate?.battery?.value ? true
+      @_lock = laststate?.lock?.value ? ""
+      env.logger.debug "Attributes state en lock initialized"
 
-      @plugin.framework.variableManager.waitForInit()
-      .then ()=>
-        @nuki = new NukiObject @plugin.bridge, @config.nukiId
-        #@debug = @plugin.debug || false
-        #@base = commons.base @, @config.class
+      #@plugin.framework.variableManager.waitForInit()
+      #.then ()=>
+      @nuki = new NukiObject @plugin.bridge, @config.nukiId
 
-        env.logger.debug "@nuki created"
+      env.logger.debug "@nuki created"
 
-        #@_state = laststate?.state?.value ? false
-        #@_setState @_state
+      @nuki.on 'batteryCritical', ()=> @_setBattery false
+      env.logger.debug "Battery handler added"
 
-        ###
-        if @plugin.bridge.list.isFulfilled
-          @_lock = "ready"
-        else
-          @_lock = "not ready"
-        @_setLock @_lock
-        ###
-        @_lock = laststate?.lock?.value ? ""
+      #@nuki.on('action', @stateHandler)
 
-        env.logger.debug "Attributes state en lock initialized"
-
-        @nuki.on('action', @stateHandler)
-
+      @nuki.addCallback('localhost', 12321, true)
+      .then (nuki)=>
+        nuki.on('action', @stateHandler)
+        env.logger.debug "nuki.on created"
         @nuki.getCallbacks().map((cb)=> 
-          env.logger.debug "@nuki.on callback url: " + cb.url
+          env.logger.debug "nuki.on callback url: " + cb.url
         )
 
-        env.logger.debug "@nuki.on created and requesting state of the lock"
+      env.logger.debug "requesting state of the lock"
 
-        @_requestUpdate()
+      @_requestUpdate()
 
-        env.logger.debug "constructor finished"
+      env.logger.debug "constructor finished"
 
       super()
-
 
     stateHandler: (state, response)=>
       ###
@@ -174,6 +173,9 @@ module.exports = (env) ->
           @_setLock 'lock-n-go open'
         else
           env.logger.debug "Unknown State received for Nuki #{@id}, State nr: " + state
+
+      if response?.batteryCritical?
+        @_setBattery response.batteryCritical
 
     actionHandler: (action)=>
       ###
@@ -263,6 +265,12 @@ module.exports = (env) ->
           env.logger.debug "Error " + err
           return Promise.reject()
 
+    getBattery: () -> Promise.resolve @_battery
+
+    _setBattery: (battery) =>
+      @_battery = battery
+      @emit 'battery', battery
+
     getLock: () -> Promise.resolve @_lock
 
     _setLock: (status) =>
@@ -309,7 +317,7 @@ module.exports = (env) ->
 
     destroy: () ->
       #@base.cancelUpdate()
-      @nuki.removeListener 'action', @stateHandler
+      #@nuki.removeListener 'action', @stateHandler
       @nuki.getCallbacks().map((cb)=> return cb.remove())
 
       super()

@@ -14,3 +14,7 @@
   * limit actions to lock and unlock
 * 20210207, V0.9.9
   * extra debug
+* 20210207, V0.9.10
+  * small fixes
+  * different callback from nuki bridge
+  * added battery indicator
