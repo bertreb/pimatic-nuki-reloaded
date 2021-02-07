@@ -210,6 +210,7 @@ module.exports = (env) ->
         env.logger.info "Nuki not ready"
         @_setLock "not ready"
         @_setState state
+        return
       if Boolean state
         @actionHandler(nukiApi.lockAction.UNLOCK)
         .then ()=>
