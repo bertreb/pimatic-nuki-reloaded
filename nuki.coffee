@@ -90,38 +90,40 @@ module.exports = (env) ->
 
       env.logger.debug "Attribute lock added"
 
-      @nuki = new NukiObject @plugin.bridge, @config.nukiId
-      @debug = @plugin.debug || false
-      @base = commons.base @, @config.class
+      @plugin.framework.variableManager.waitForInit()
+      .then ()=>
+        @nuki = new NukiObject @plugin.bridge, @config.nukiId
+        #@debug = @plugin.debug || false
+        #@base = commons.base @, @config.class
 
-      env.logger.debug "@nuki created"
+        env.logger.debug "@nuki created"
 
-      #@_state = laststate?.state?.value ? false
-      #@_setState @_state
+        #@_state = laststate?.state?.value ? false
+        #@_setState @_state
 
-      ###
-      if @plugin.bridge.list.isFulfilled
-        @_lock = "ready"
-      else
-        @_lock = "not ready"
-      @_setLock @_lock
-      ###
-      @_lock = laststate?.lock?.value ? ""
+        ###
+        if @plugin.bridge.list.isFulfilled
+          @_lock = "ready"
+        else
+          @_lock = "not ready"
+        @_setLock @_lock
+        ###
+        @_lock = laststate?.lock?.value ? ""
 
-      env.logger.debug "Attributes state en lock initialized"
+        env.logger.debug "Attributes state en lock initialized"
 
-      @nuki.on('action', @stateHandler)
+        @nuki.on('action', @stateHandler)
 
-      env.logger.debug "@nuki.on created and requesting state of the lock"
+        env.logger.debug "@nuki.on created and requesting state of the lock"
 
-      @_requestUpdate()
+        @_requestUpdate()
 
-      env.logger.debug "constructor finished"
+        env.logger.debug "constructor finished"
 
       super()
 
 
-    stateHandler: (state)=>
+    stateHandler: (state, response)=>
       ###
       LockStateV1_2 =
         UNCALIBRATED: 0,
@@ -137,6 +139,7 @@ module.exports = (env) ->
       ###
 
       env.logger.debug "StateHandler, state received: " + state
+      env.logger.debug "StateHandler, response received: " + JSON.stringify(response,null,2)
 
       switch state
         when nukiApi.lockState.LOCKED
@@ -223,31 +226,32 @@ module.exports = (env) ->
         env.logger.debug "Lock state is #{state}"
         if typeof state is "string"
           state = parseInt state
-        @_setState (state is nukiApi.lockState.LOCKED)
+        @stateHandler state
+        #@_setState (state is nukiApi.lockState.LOCKED)
       .catch (error) =>
         env.logger.error "Error:", error
       #.finally () =>
       #  @base.scheduleUpdate @_requestUpdate, @config.interval * 1000
 
     changeStateTo: (state) ->
-      unless @plugin.bridge.list.isFulfilled
-        env.logger.info "Nuki not ready"
-        @_setLock "not ready"
-        @_setState state
-        return Promise.resolve()
+      #unless @plugin.bridge.list.isFulfilled
+      #  env.logger.info "Nuki not ready"
+      #  @_setLock "not ready"
+      #  @_setState state
+      #  return Promise.resolve()
       if Boolean state
-        @actionHandler(nukiApi.lockAction.UNLOCK)
+        @actionHandler(nukiApi.lockAction.LOCK)
         .then ()=>
-          @_setLock "unlocked"
+          @_setLock "locked"
           @_setState state
           return Promise.resolve()
         .catch (err)=>
           env.logger.debug "Error " + err
           return Promise.reject()
       else
-        @actionHandler(nukiApi.lockAction.LOCK)
+        @actionHandler(nukiApi.lockAction.UNLOCK)
         .then ()=>
-          @_setLock "locked"
+          @_setLock "unlocked"
           @_setState state
           return Promise.resolve()
         .catch (err)=>
