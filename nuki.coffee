@@ -239,6 +239,7 @@ module.exports = (env) ->
       #  @_setLock "not ready"
       #  @_setState state
       #  return Promise.resolve()
+      if state is @_state then return
       if Boolean state
         @actionHandler(nukiApi.lockAction.LOCK)
         .then ()=>
@@ -267,10 +268,10 @@ module.exports = (env) ->
     execute: (command, options) =>
       return new Promise((resolve,reject) =>
 
-        unless @plugin.bridge.list.isFulfilled
-          @_setLock "not ready"
-          reject()
-          return
+        #unless @plugin.bridge.list.isFulfilled
+        #  @_setLock "not ready"
+        #  reject()
+        #  return
 
         env.logger.debug "Execute command: " + command + ", options: " + JSON.stringify(options,null,2)
         switch command
@@ -296,27 +297,6 @@ module.exports = (env) ->
             .catch (err) =>
               env.logger.debug "Error unlocking #{@id}: " + JSON.stringify(err,null,2)
               reject()
-          when "open"
-            env.logger.debug "Open Nuki #{@id}"
-            @nuki.unlatch() #nowait
-            .then (resp)=>
-              env.logger.debug "Nuki #{@id} opened"
-              @_setState off
-              @_setLock "open"
-              resolve()
-            .catch (err) =>
-              env.logger.debug "Error opening #{@id}: " + JSON.stringify(err,null,2)
-              reject()
-          when "lock-n-go"
-            env.logger.debug "Lock-n-go Nuki #{@id}"
-            @nuki.unlatch() #nowait
-            .then (resp)=>
-              env.logger.debug "Nuki #{@id} lock-n-go"
-              @_setState off
-              resolve()
-            .catch (err) =>
-              env.logger.debug "Error lock-n-go #{@id}: " + JSON.stringify(err,null,2)
-              reject()
           else
             env.logger.debug "Command not implemented: " + command
             reject()
@@ -326,6 +306,8 @@ module.exports = (env) ->
     destroy: () ->
       #@base.cancelUpdate()
       @nuki.removeListener 'action', @stateHandler
+      @nuki.getCallbacks().map((cb)=> return cb.remove())
+
       super()
 
   class NukiActionProvider extends env.actions.ActionProvider
@@ -356,12 +338,6 @@ module.exports = (env) ->
         )
         .or([
           ((m) =>
-            return m.match(' open', (m) =>
-              setCommand('open')
-              match = m.getFullMatch()
-            )
-          ),
-          ((m) =>
             return m.match(' lock', (m) =>
               setCommand('lock')
               match = m.getFullMatch()
@@ -370,12 +346,6 @@ module.exports = (env) ->
           ((m) =>
             return m.match(' unlock', (m) =>
               setCommand('unlock')
-              match = m.getFullMatch()
-            )
-          ),
-          ((m) =>
-            return m.match(' lock-n-go', (m) =>
-              setCommand('lock-n-go')
               match = m.getFullMatch()
             )
           )

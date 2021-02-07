@@ -10,3 +10,5 @@
   * add lock state on init
 * 20210207, V0.9.7
   * removed nuki ready test
+* 20210207, V0.9.8
+  * limit actions to lock and unlock
