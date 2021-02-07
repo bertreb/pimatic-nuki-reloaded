@@ -12,3 +12,5 @@
   * removed nuki ready test
 * 20210207, V0.9.8
   * limit actions to lock and unlock
+* 20210207, V0.9.9
+  * extra debug

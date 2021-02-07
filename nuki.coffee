@@ -114,6 +114,10 @@ module.exports = (env) ->
 
         @nuki.on('action', @stateHandler)
 
+        @nuki.getCallbacks().map((cb)=> 
+          env.logger.debug "@nuki.on callback url: " + cb.url
+        )
+
         env.logger.debug "@nuki.on created and requesting state of the lock"
 
         @_requestUpdate()
