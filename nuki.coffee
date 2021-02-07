@@ -109,8 +109,12 @@ module.exports = (env) ->
 
       @nuki.on('action', @stateHandler)
 
-      env.logger.debug "@nuki.on created and constructor finished"
+      env.logger.debug "@nuki.on created and requesting state of the lock"
 
+      @_requestUpdate()
+
+      env.logger.debug "constructor finished"
+      
       super()
 
 
@@ -206,19 +210,19 @@ module.exports = (env) ->
       Promise.resolve()
 
     _requestUpdate: () =>
-      @base.cancelUpdate()
-      @base.debug "Requesting update"
+      #@base.cancelUpdate()
+      env.logger.debug "Requesting update"
 
       @nuki.lockState()
       .then (state) =>
-        @base.debug "Lock state is #{state}"
+        env.logger.debug "Lock state is #{state}"
         if typeof state is "string"
           state = parseInt state
         @_setState (state is nukiApi.lockState.LOCKED)
       .catch (error) =>
-        @base.error "Error:", error
-      .finally () =>
-        @base.scheduleUpdate @_requestUpdate, @config.interval * 1000
+        env.logger.error "Error:", error
+      #.finally () =>
+      #  @base.scheduleUpdate @_requestUpdate, @config.interval * 1000
 
     changeStateTo: (state) ->
       unless @plugin.bridge.list.isFulfilled
