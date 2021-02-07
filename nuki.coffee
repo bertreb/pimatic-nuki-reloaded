@@ -14,6 +14,9 @@ module.exports = (env) ->
     init: (app, @framework, @config) =>
       @debug = @config.debug || false
       @bridge = new nukiApi.Bridge @config.host, @config.port, @config.token
+
+      env.logger.debug "New nukiApi.Bridge created"
+
       @base = commons.base @, 'Plugin'
 
       # register devices
@@ -38,8 +41,8 @@ module.exports = (env) ->
               deviceConfig =
                 id: @lastId
                 name: device.name
-                class: 'Nuki'
-                nukiId: device.nukiId
+                class: 'NukiDevice'
+                nukiId: String device.nukiId
 
               @framework.deviceManager.discoveredDevice(
                 'pimatic-nuki',
@@ -77,34 +80,39 @@ module.exports = (env) ->
       @id = @config.id
       @name = @config.name
 
-      @addAttribute 'lock',
+      env.logger.debug "Start constructor Nuki device"
+
+      @addAttribute('lock',
         description: "Status of the lock"
         type: "string"
         acronym: "status"
+      )
+
+      env.logger.debug "Attribute lock added"
 
       @nuki = new NukiObject @plugin.bridge, @config.nukiId
       @debug = @plugin.debug || false
       @base = commons.base @, @config.class
 
-      @_state = laststate?.state?.value ? false
-      @_setState @_state
+      env.logger.debug "@nuki created"
+
+      #@_state = laststate?.state?.value ? false
+      #@_setState @_state
       if @plugin.bridge.list.isFulfilled
         @_lock = "ready"
       else
         @_lock = "not ready"
       @_setLock @_lock
+      #@_lock = laststate?.lock?.value ? "not ready"
+
+      env.logger.debug "Attributes state en lock initialized"
 
       @nuki.on('action', @stateHandler)
 
+      env.logger.debug "@nuki.on created and constructor finished"
+
       super()
 
-      #process.nextTick () =>
-      #  @_requestUpdate()
-
-    destroy: () ->
-      @base.cancelUpdate()
-      @nuki.removeListener 'action', @stateHandler
-      super()
 
     stateHandler: (state)=>
       ###
@@ -120,6 +128,8 @@ module.exports = (env) ->
         MOTOR_BLOCKED: 254,
         UNDEFINED: 255
       ###
+
+      env.logger.debug "StateHandler, state received: " + state
 
       switch state
         when nukiApi.lockState.LOCKED
@@ -160,10 +170,19 @@ module.exports = (env) ->
         LOCK_N_GO: 4,
         LOCK_N_GO_WITH_UNLATCH: 5
       ###
+
+      env.logger.debug "ActionHandler, check @plugin.bridge.list.isFulfilled -> ready"
+
+      unless @plugin.bridge.list?.isFulfilled?
+        env.logger.debug "Nuki not ready"
+        return
+
       unless @plugin.bridge.list.isFulfilled
         env.logger.debug "Nuki not ready"
         @_setLock "not ready"
-        return Promise.reject()
+        return
+
+      env.logger.debug "ActionHandler, action received: " + action
 
       switch action
         when nukiApi.lockAction.LOCK
@@ -172,20 +191,16 @@ module.exports = (env) ->
             env.logger.debug "Nuki locked"
             @_setState on
             @_setLock "locked"
-            resolve()
           .catch (err) =>
             env.logger.debug "Error locking #{@id}: " + JSON.stringify(err,null,2)
-            reject()
         when nukiApi.lockAction.UNLOCK
           @nuki.lockAction(nukiApi.lockState.UNLOCKED, false) #nowait
           .then (resp)=>
             env.logger.debug "Nuki unlocked"
             @_setState on
             @_setLock "unlocked"
-            resolve()
           .catch (err) =>
             env.logger.debug "Error unlocking #{@id}: " + JSON.stringify(err,null,2)
-            reject()
         else
           env.logger.debug "Action '#{action}' not implemented"
       Promise.resolve()
@@ -210,21 +225,25 @@ module.exports = (env) ->
         env.logger.info "Nuki not ready"
         @_setLock "not ready"
         @_setState state
-        return
+        return Promise.resolve()
       if Boolean state
         @actionHandler(nukiApi.lockAction.UNLOCK)
         .then ()=>
           @_setLock "unlocked"
           @_setState state
+          return Promise.resolve()
         .catch (err)=>
           env.logger.debug "Error " + err
+          return Promise.reject()
       else
         @actionHandler(nukiApi.lockAction.LOCK)
         .then ()=>
           @_setLock "locked"
           @_setState state
+          return Promise.resolve()
         .catch (err)=>
           env.logger.debug "Error " + err
+          return Promise.reject()
 
     getLock: () -> Promise.resolve @_lock
 
@@ -291,6 +310,10 @@ module.exports = (env) ->
         resolve()
       )
 
+    destroy: () ->
+      #@base.cancelUpdate()
+      @nuki.removeListener 'action', @stateHandler
+      super()
 
   class NukiActionProvider extends env.actions.ActionProvider
 
