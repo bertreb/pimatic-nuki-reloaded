@@ -8,3 +8,5 @@
   * Fix bugs
 * 20210207, V0.9.5
   * add lock state on init
+* 20210207, V0.9.6
+  * removed nuki ready test

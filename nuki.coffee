@@ -98,12 +98,15 @@ module.exports = (env) ->
 
       #@_state = laststate?.state?.value ? false
       #@_setState @_state
+
+      ###
       if @plugin.bridge.list.isFulfilled
         @_lock = "ready"
       else
         @_lock = "not ready"
       @_setLock @_lock
-      #@_lock = laststate?.lock?.value ? "not ready"
+      ###
+      @_lock = laststate?.lock?.value ? ""
 
       env.logger.debug "Attributes state en lock initialized"
 
@@ -114,7 +117,7 @@ module.exports = (env) ->
       @_requestUpdate()
 
       env.logger.debug "constructor finished"
-      
+
       super()
 
 
@@ -137,33 +140,33 @@ module.exports = (env) ->
 
       switch state
         when nukiApi.lockState.LOCKED
-          env.logger.debug "Action LOCKED received for Nuki #{@id}"
+          env.logger.debug "State LOCKED received for Nuki #{@id}"
           @_setState on
           @_setLock 'locked'
         when nukiApi.lockState.LOCKING
-          env.logger.debug "Action LOCKING received for Nuki #{@id}"
+          env.logger.debug "State LOCKING received for Nuki #{@id}"
           @_setState on
           @_setLock 'locking'
         when nukiApi.lockState.UNLOCKING
-          env.logger.debug "Action UNLOCKING received for Nuki #{@id}"
+          env.logger.debug "State UNLOCKING received for Nuki #{@id}"
           @_setState off
           @_setLock 'unlocking'
         when nukiApi.lockState.UNLOCKED
-          env.logger.debug "Action UNLOCKED received for Nuki #{@id}"
+          env.logger.debug "State UNLOCKED received for Nuki #{@id}"
           @_setState off
           @_setLock 'unlocked'
         when nukiApi.lockState.UNLATCH
-          env.logger.debug "Action UNLATCH received for Nuki #{@id}"
+          env.logger.debug "State UNLATCH received for Nuki #{@id}"
           @_setState off
           @_setLock 'open'
         when nukiApi.lockState.LOCK_N_GO
-          env.logger.debug "Action LOCK_N_GO received for Nuki #{@id}"
+          env.logger.debug "State LOCK_N_GO received for Nuki #{@id}"
           @_setLock 'lock-n-go'
         when nukiApi.lockState.LOCK_N_GO_WITH_UNLATCH
-          env.logger.debug "Action LOCK_N_GO_WITH_UNLATCH received for Nuki #{@id}"
+          env.logger.debug "State LOCK_N_GO_WITH_UNLATCH received for Nuki #{@id}"
           @_setLock 'lock-n-go open'
         else
-          env.logger.debug "Unknown Action received for Nuki #{@id}, action nr: " + action
+          env.logger.debug "Unknown State received for Nuki #{@id}, State nr: " + state
 
     actionHandler: (action)=>
       ###
@@ -175,6 +178,7 @@ module.exports = (env) ->
         LOCK_N_GO_WITH_UNLATCH: 5
       ###
 
+      ###
       env.logger.debug "ActionHandler, check @plugin.bridge.list.isFulfilled -> ready"
 
       unless @plugin.bridge.list?.isFulfilled?
@@ -185,6 +189,7 @@ module.exports = (env) ->
         env.logger.debug "Nuki not ready"
         @_setLock "not ready"
         return
+      ###
 
       env.logger.debug "ActionHandler, action received: " + action
 
@@ -201,7 +206,7 @@ module.exports = (env) ->
           @nuki.lockAction(nukiApi.lockState.UNLOCKED, false) #nowait
           .then (resp)=>
             env.logger.debug "Nuki unlocked"
-            @_setState on
+            @_setState off
             @_setLock "unlocked"
           .catch (err) =>
             env.logger.debug "Error unlocking #{@id}: " + JSON.stringify(err,null,2)
