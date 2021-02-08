@@ -276,8 +276,8 @@ module.exports = (env) ->
         env.logger.debug "Update list: #{@nukiId} " + JSON.stringify(list,null,2)
         _nuki = _.find(list,(n)=>Number n.nukiId == Number @nukiId)
         if _nuki?.lastKnownState?
-          env.logger.debug "LockState is #{state}"
           _state = _nuki.lastKnownState.state
+          env.logger.debug "LockState is #{_state}"
           if typeof _state is "string"
             _state = parseInt _state
           @stateHandler _state, _nuki.lastKnownState
