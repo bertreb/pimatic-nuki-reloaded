@@ -84,10 +84,10 @@ module.exports = (env) ->
       env.logger.debug "Start constructor Nuki device"
 
       @addAttribute('battery',
-        description: "Status of the battery"
+        description: "Critical status of the battery"
         type: "boolean"
         acronym: "battery"
-        labels: ["ok","critical"]
+        labels: ["critical","ok"]
       )
       @addAttribute('lock',
         description: "Status of the lock"
@@ -96,7 +96,7 @@ module.exports = (env) ->
       )
       env.logger.debug "Attribute battery and lock added"
 
-      @_battery = laststate?.battery?.value ? true
+      @_battery = laststate?.battery?.value ? false
       @_lock = laststate?.lock?.value ? ""
       env.logger.debug "Attributes state en lock initialized"
 
@@ -106,7 +106,7 @@ module.exports = (env) ->
 
       env.logger.debug "@nuki created"
 
-      @nuki.on 'batteryCritical', ()=> @_setBattery false
+      #@nuki.on 'batteryCritical', ()=> @_setBattery false
       env.logger.debug "Battery handler added"
 
       #@nuki.on('action', @stateHandler)
@@ -116,7 +116,9 @@ module.exports = (env) ->
         env.logger.debug "Ip address for callback: " + ip
         return @nuki.addCallback(ip, 12321, true)
       .then (nuki)=>
+        env.logger.debug "Nuki: " + JSON.stringify(nuki,null,2)
         nuki.on('action', @stateHandler)
+        nuki.on 'batteryCritical', (battery)=> @_setBattery(battery ? true)
         env.logger.debug "nuki.on created"
         @nuki.getCallbacks().map((cb)=> 
           env.logger.debug "nuki.on callback url: " + cb.url
@@ -126,7 +128,7 @@ module.exports = (env) ->
 
       env.logger.debug "requesting state of the lock"
 
-      @_requestUpdate()
+      #@_requestUpdate()
 
       env.logger.debug "constructor finished"
 
@@ -152,33 +154,33 @@ module.exports = (env) ->
 
       switch state
         when nukiApi.lockState.LOCKED
-          env.logger.debug "State LOCKED received for Nuki #{@id}"
+          env.logger.debug "State LOCKED received for '#{@id}'"
           @_setState on
           @_setLock 'locked'
         when nukiApi.lockState.LOCKING
-          env.logger.debug "State LOCKING received for Nuki #{@id}"
+          env.logger.debug "State LOCKING received for '#{@id}'"
           @_setState on
           @_setLock 'locking'
         when nukiApi.lockState.UNLOCKING
-          env.logger.debug "State UNLOCKING received for Nuki #{@id}"
+          env.logger.debug "State UNLOCKING received for '#{@id}'"
           @_setState off
           @_setLock 'unlocking'
         when nukiApi.lockState.UNLOCKED
-          env.logger.debug "State UNLOCKED received for Nuki #{@id}"
+          env.logger.debug "State UNLOCKED received for '#{@id}'"
           @_setState off
           @_setLock 'unlocked'
         when nukiApi.lockState.UNLATCH
-          env.logger.debug "State UNLATCH received for Nuki #{@id}"
+          env.logger.debug "State UNLATCH received for '#{@id}'"
           @_setState off
           @_setLock 'open'
         when nukiApi.lockState.LOCK_N_GO
-          env.logger.debug "State LOCK_N_GO received for Nuki #{@id}"
+          env.logger.debug "State LOCK_N_GO received for '#{@id}'"
           @_setLock 'lock-n-go'
         when nukiApi.lockState.LOCK_N_GO_WITH_UNLATCH
-          env.logger.debug "State LOCK_N_GO_WITH_UNLATCH received for Nuki #{@id}"
+          env.logger.debug "State LOCK_N_GO_WITH_UNLATCH received for '#{@id}'"
           @_setLock 'lock-n-go open'
         else
-          env.logger.debug "Unknown State received for Nuki #{@id}, State nr: " + state
+          env.logger.debug "Unknown State received for '#{@id}', State nr: " + state
 
       if response?.batteryCritical?
         @_setBattery response.batteryCritical
@@ -212,19 +214,19 @@ module.exports = (env) ->
         when nukiApi.lockAction.LOCK
           @nuki.lockAction(nukiApi.lockAction.LOCK, false) #nowait
           .then (resp)=>
-            env.logger.debug "Nuki locked"
+            env.logger.debug "'#{@id}' locked"
             @_setState on
             @_setLock "locked"
           .catch (err) =>
-            env.logger.debug "Error locking #{@id}: " + JSON.stringify(err,null,2)
+            env.logger.debug "Error locking '#{@id}': " + JSON.stringify(err,null,2)
         when nukiApi.lockAction.UNLOCK
           @nuki.lockAction(nukiApi.lockAction.UNLOCK, false) #nowait
           .then (resp)=>
-            env.logger.debug "Nuki unlocked"
+            env.logger.debug "'#{@id}' unlocked"
             @_setState off
             @_setLock "unlocked"
           .catch (err) =>
-            env.logger.debug "Error unlocking #{@id}: " + JSON.stringify(err,null,2)
+            env.logger.debug "Error unlocking '#{@id}': " + JSON.stringify(err,null,2)
         else
           env.logger.debug "Action '#{action}' not implemented"
       Promise.resolve()
@@ -235,7 +237,7 @@ module.exports = (env) ->
 
       @nuki.lockState()
       .then (state) =>
-        env.logger.debug "Lock state is #{state}"
+        env.logger.debug "LockState is #{state}"
         if typeof state is "string"
           state = parseInt state
         @stateHandler state
