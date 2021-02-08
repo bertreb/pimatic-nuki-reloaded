@@ -28,3 +28,5 @@
   * added buttons for lock
 * 20210208, V0.9.18
   * added /info polling for batteryLevel
+* 20210208, V0.9.19
+  * added xAttributeOptions
