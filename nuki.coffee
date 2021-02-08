@@ -102,6 +102,8 @@ module.exports = (env) ->
       @id = @config.id
       @name = @config.name
 
+      @nukiId = @config.nukiId
+
       env.logger.debug "Start constructor Nuki device"
 
       @addAttribute('state',
@@ -115,6 +117,12 @@ module.exports = (env) ->
         acronym: "battery"
         labels: ["critical","ok"]
       )
+      @addAttribute('batteryLevel',
+        description: "Battery level"
+        type: "number"
+        acronym: "batteryLevel"
+        unit: "%"
+      )
       @addAttribute('lock',
         description: "Status of the lock"
         type: "string"
@@ -124,6 +132,7 @@ module.exports = (env) ->
 
       @_state = laststate?.state?.value ? false
       @_battery = laststate?.battery?.value ? false
+      @_batteryLevel = laststate?.batteryLevel?.value ? 0
       @_lock = laststate?.lock?.value ? ""
       env.logger.debug "Attributes state en lock initialized"
 
@@ -208,6 +217,8 @@ module.exports = (env) ->
 
       if response?.batteryCritical?
         @_setBattery response.batteryCritical
+      if response?.batteryChargeState?
+        @_setBatteryLevel response.batteryChargeState
 
     actionHandler: (action)=>
       ###
@@ -259,17 +270,23 @@ module.exports = (env) ->
       #@base.cancelUpdate()
       env.logger.debug "Requesting update"
 
-      @nuki.lockState()
-      .then (state) =>
-        env.logger.debug "LockState is #{state}"
-        if typeof state is "string"
-          state = parseInt state
-        @stateHandler state
-        #@_setState (state is nukiApi.lockState.LOCKED)
+      #@nuki.lockState()
+      @plugin.bridge.list()
+      .then (list) =>
+        env.logger.debug "Update list: #{@nukiId} " + JSON.stringify(list,null,2)
+        _nuki = _.find(list,(n)=>Number n.nukiId == Number @nukiId)
+        if _nuki?.lastKnownState?
+          env.logger.debug "LockState is #{state}"
+          _state = _nuki.lastKnownState.state
+          if typeof _state is "string"
+            _state = parseInt _state
+          @stateHandler _state, _nuki.lastKnownState
+          #@_setState (state is nukiApi.lockState.LOCKED)
       .catch (error) =>
         env.logger.error "Error:", error
-      #.finally () =>
-      #  @base.scheduleUpdate @_requestUpdate, @config.interval * 1000
+      .finally () =>
+        @scheduleUpdate = setTimeout(@_requestUpdate, @config.interval * 1000)
+
 
     changeStateTo: (state) ->
       #unless @plugin.bridge.list.isFulfilled
@@ -308,6 +325,12 @@ module.exports = (env) ->
     _setBattery: (battery) =>
       @_battery = battery
       @emit 'battery', battery
+
+    getBatteryLevel: () -> Promise.resolve @_batteryLevel
+
+    _setBatteryLevel: (batteryLevel) =>
+      @_batteryLevel = batteryLevel
+      @emit 'batteryLevel', batteryLevel
 
     getLock: () -> Promise.resolve @_lock
 
@@ -354,7 +377,7 @@ module.exports = (env) ->
       )
 
     destroy: () ->
-      #@base.cancelUpdate()
+      clearTimeout(@scheduleUpdate)
       #@nuki.removeListener 'action', @stateHandler
       @nuki.getCallbacks().map((cb)=> return cb.remove())
 

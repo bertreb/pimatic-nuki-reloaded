@@ -26,3 +26,5 @@
   * updated callback
 * 20210208, V0.9.16
   * added buttons for lock
+* 20210208, V0.9.17
+  * added /info polling for batteryLevel
