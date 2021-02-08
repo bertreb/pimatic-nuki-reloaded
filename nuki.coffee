@@ -113,7 +113,7 @@ module.exports = (env) ->
 
       internalIp.v4()
       .then (ip)=>
-        env.logger.debug "Own ip address: " + ip
+        env.logger.debug "Ip address for callback: " + ip
         return @nuki.addCallback(ip, 12321, true)
       .then (nuki)=>
         nuki.on('action', @stateHandler)
@@ -210,7 +210,7 @@ module.exports = (env) ->
 
       switch action
         when nukiApi.lockAction.LOCK
-          @nuki.lockAction(nukiApi.lockState.LOCKED, false) #nowait
+          @nuki.lockAction(nukiApi.lockAction.LOCK, false) #nowait
           .then (resp)=>
             env.logger.debug "Nuki locked"
             @_setState on
@@ -218,7 +218,7 @@ module.exports = (env) ->
           .catch (err) =>
             env.logger.debug "Error locking #{@id}: " + JSON.stringify(err,null,2)
         when nukiApi.lockAction.UNLOCK
-          @nuki.lockAction(nukiApi.lockState.UNLOCKED, false) #nowait
+          @nuki.lockAction(nukiApi.lockAction.UNLOCK, false) #nowait
           .then (resp)=>
             env.logger.debug "Nuki unlocked"
             @_setState off

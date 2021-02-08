@@ -20,7 +20,7 @@
     "Nuki.io",
     "Pimatic"
   ],
-  "version": "0.9.11",
+  "version": "0.9.12",
   "homepage": "https://github.com/bertreb/pimatic-nuki-reloaded/tree/master",
   "private": false,
   "repository": {

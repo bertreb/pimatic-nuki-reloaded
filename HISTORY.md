@@ -20,3 +20,5 @@
   * added battery indicator
 * 20210208, V0.9.11
   * fix ip address for callback
+* 20210208, V0.9.12
+  * fix LOCK and UNLOCK action parameters
