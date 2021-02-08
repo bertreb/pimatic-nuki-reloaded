@@ -7,6 +7,7 @@ module.exports = (env) ->
   commons = require('pimatic-plugin-commons')(env)
   M = env.matcher
   _ = require('lodash')
+  internalIp = require('internal-ip')
 
   # ###NukiPlugin class
   class NukiPlugin extends env.plugins.Plugin
@@ -110,13 +111,18 @@ module.exports = (env) ->
 
       #@nuki.on('action', @stateHandler)
 
-      @nuki.addCallback('localhost', 12321, true)
+      internalIp.v4()
+      .then (ip)=>
+        env.logger.debug "Own ip address: " + ip
+        return @nuki.addCallback(ip, 12321, true)
       .then (nuki)=>
         nuki.on('action', @stateHandler)
         env.logger.debug "nuki.on created"
         @nuki.getCallbacks().map((cb)=> 
           env.logger.debug "nuki.on callback url: " + cb.url
         )
+      .catch (err)=>
+        env.logger.debug "Error adding callback " + err
 
       env.logger.debug "requesting state of the lock"
 

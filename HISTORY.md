@@ -18,3 +18,5 @@
   * small fixes
   * different callback from nuki bridge
   * added battery indicator
+* 20210208, V0.9.11
+  * fix ip address for callback
