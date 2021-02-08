@@ -4,6 +4,6 @@ script#nuki-template(type='text/template')
     .controls.no-carousel-slide
       .button-control.ui-controlgroup.ui-controlgroup-horizontal.ui-corner-all.ui-mini.no-carousel-slide(data-role='controlgroup', data-type='horizontal', data-mini='true', data-enhanced='true')
         .ui-controlgroup-controls
-          a.ui-first-child.ui-btn.ui-corner-all(name='unlockedButton', data-bind='click: stateOff') unlocked
-          a.ui-last-child.ui-btn.ui-corner-all(name='lockedButton', data-bind='click: stateOn') locked
+          a.ui-first-child.ui-btn.ui-corner-all(name='unlockButton', data-bind='click: stateOff') unlock
+          a.ui-last-child.ui-btn.ui-corner-all(name='lockButton', data-bind='click: stateOn') lock
     span.attributes(data-bind="template: { name: 'attribute-template', foreach: $data.device.attributes, afterRender: $data.afterAttributeRender }")

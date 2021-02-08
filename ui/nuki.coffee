@@ -38,8 +38,8 @@ $(document).on 'templateinit', (event) ->
       super(elements)
 
       # find the buttons
-      @lockedButton = $(elements).find('[name=lockedButton]')
-      @unlockedButton = $(elements).find('[name=unlockedButton]')
+      @lockButton = $(elements).find('[name=lockButton]')
+      @unlockButton = $(elements).find('[name=unlockButton]')
 
       @updateStateButtons()
 
@@ -54,11 +54,11 @@ $(document).on 'templateinit', (event) ->
       stateAttr = @getAttribute('state')?.value()
       switch stateAttr
         when true
-          @lockedButton.addClass('ui-btn-active')
-          @unlockedButton.removeClass('ui-btn-active')
+          @lockButton.addClass('ui-btn-active')
+          @unlockButton.removeClass('ui-btn-active')
         else
-          @lockedButton.removeClass('ui-btn-active')
-          @unlockedButton.addClass('ui-btn-active')
+          @lockButton.removeClass('ui-btn-active')
+          @unlockButton.addClass('ui-btn-active')
       return
 
     changeStateTo: (state) ->
