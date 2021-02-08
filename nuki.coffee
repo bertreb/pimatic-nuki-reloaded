@@ -295,7 +295,7 @@ module.exports = (env) ->
         switch command
           when "lock"
             env.logger.debug "Lock Nuki #{@id}"
-            @nuki.lockAction(nukiApi.lockState.LOCK, false) #nowait
+            @nuki.lockAction(nukiApi.lockAction.LOCK, false) #nowait
             .then (resp)=>
               env.logger.debug "Nuki locked"
               @_setState on
@@ -306,7 +306,7 @@ module.exports = (env) ->
               reject()
           when "unlock"
             env.logger.debug "Unlock Nuki #{@id}"
-            @nuki.lockAction(nukiApi.lockState.UNLOCK, false) #nowait
+            @nuki.lockAction(nukiApi.lockAction.UNLOCK, false) #nowait
             .then (resp)=>
               env.logger.debug "Nuki #{@id} unlocked"
               @_setState off
