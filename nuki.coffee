@@ -28,6 +28,19 @@ module.exports = (env) ->
           new NukiDevice(@config, @, lastState)
       )
 
+      @framework.on "after init", =>
+        # Check if the mobile-frontend was loaded and get a instance
+        mobileFrontend = @framework.pluginManager.getPlugin 'mobile-frontend'
+        if mobileFrontend?
+          mobileFrontend.registerAssetFile 'js', 'pimatic-nuki-reloaded/ui/nuki.coffee'
+          mobileFrontend.registerAssetFile 'css', 'pimatic-nuki-reloaded/ui/nuki.css'
+          mobileFrontend.registerAssetFile 'html', 'pimatic-nuki-reloaded/ui/nuki.jade'
+          #mobileFrontend.registerAssetFile 'js', 'pimatic-tado-reloaded/ui/vendor/spectrum.js'
+          #mobileFrontend.registerAssetFile 'css', 'pimatic-tado-reloaded/ui/vendor/spectrum.css'
+          #mobileFrontend.registerAssetFile 'js', 'pimatic-tado-reloaded/ui/vendor/async.js'
+        else
+          env.logger.warn 'your plugin could not find the mobile-frontend. No gui will be available'
+
       @framework.ruleManager.addActionProvider(new NukiActionProvider(@framework))
 
       # auto-discovery
@@ -53,7 +66,16 @@ module.exports = (env) ->
       )
 
 
-  class NukiDevice extends env.devices.SwitchActuator
+  class NukiDevice extends env.devices.Device
+
+    template: 'nuki'
+
+    actions:
+      changeStateTo:
+        params:
+          state:
+            type: "boolean"
+
 
     ###
     LockStateV1_2 =
@@ -76,13 +98,17 @@ module.exports = (env) ->
       LOCK_N_GO_WITH_UNLATCH: 5
     ###
 
-
     constructor: (@config, @plugin, lastState) ->
       @id = @config.id
       @name = @config.name
 
       env.logger.debug "Start constructor Nuki device"
 
+      @addAttribute('state',
+        description: "State of the lock"
+        type: "boolean"
+        hidden: true
+      )
       @addAttribute('battery',
         description: "Critical status of the battery"
         type: "boolean"
@@ -96,6 +122,7 @@ module.exports = (env) ->
       )
       env.logger.debug "Attribute battery and lock added"
 
+      @_state = laststate?.state?.value ? false
       @_battery = laststate?.battery?.value ? false
       @_lock = laststate?.lock?.value ? ""
       env.logger.debug "Attributes state en lock initialized"
@@ -107,32 +134,29 @@ module.exports = (env) ->
       env.logger.debug "@nuki created"
 
       #@nuki.on 'batteryCritical', ()=> @_setBattery false
-      env.logger.debug "Battery handler added"
-
-      #@nuki.on('action', @stateHandler)
 
       internalIp.v4()
       .then (ip)=>
         env.logger.debug "Ip address for callback: " + ip
         return @nuki.addCallback(ip, 12321, true)
       .then (nuki)=>
-        env.logger.debug "Nuki: " + JSON.stringify(nuki,null,2)
         nuki.on('action', @stateHandler)
+        env.logger.debug "Event handler created"
         nuki.on 'batteryCritical', (battery)=> @_setBattery(battery ? true)
-        env.logger.debug "nuki.on created"
+        env.logger.debug "Battery handler added"
         @nuki.getCallbacks().map((cb)=> 
-          env.logger.debug "nuki.on callback url: " + cb.url
+          env.logger.debug "Callbacks: " + cb.url
         )
+      .finally ()=>
+        env.logger.debug "requesting state of the lock"
+        @_requestUpdate()
+        env.logger.debug "initialization finished"
       .catch (err)=>
-        env.logger.debug "Error adding callback " + err
-
-      env.logger.debug "requesting state of the lock"
-
-      #@_requestUpdate()
-
-      env.logger.debug "constructor finished"
+        env.logger.debug "Error initializing " + err
 
       super()
+
+    getTemplateName: -> "nuki"
 
     stateHandler: (state, response)=>
       ###
@@ -272,6 +296,12 @@ module.exports = (env) ->
         .catch (err)=>
           env.logger.debug "Error " + err
           return Promise.reject()
+
+    getState: () -> Promise.resolve @_state
+
+    _setState: (state) =>
+      @_state = state
+      @emit 'state', state
 
     getBattery: () -> Promise.resolve @_battery
 

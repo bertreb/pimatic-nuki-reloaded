@@ -24,3 +24,5 @@
   * fix LOCK and UNLOCK action parameters
 * 20210208, V0.9.14
   * updated callback
+* 20210208, V0.9.15
+  * added buttons for lock
