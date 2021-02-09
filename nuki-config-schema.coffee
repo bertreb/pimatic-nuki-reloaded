@@ -14,6 +14,10 @@ module.exports = {
       description: "Service Port of the Nuki bridge"
       type: "number"
       default: 8080
+    callbackPort:
+      description: "The port for the callback from the bridge"
+      type: "number"
+      default: 12321
     token:
       description: "The API token configured via the Nuki App when enabling the API"
       type: "string"

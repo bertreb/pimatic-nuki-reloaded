@@ -1,4 +1,4 @@
-# The amazing dash-button plugin
+# The nuki-reloaded plugin
 module.exports = (env) ->
 
   Promise = env.require 'bluebird'
@@ -15,8 +15,21 @@ module.exports = (env) ->
     init: (app, @framework, @config) =>
       @debug = @config.debug || false
       @bridge = new nukiApi.Bridge @config.host, @config.port, @config.token
-
       env.logger.debug "New nukiApi.Bridge created"
+
+      @callbackPort = @config.callbackPort ? 12321
+      internalIp.v4()
+      .then (ip)=>
+        @ip = ip
+        env.logger.debug "Ip address for callback: " + @ip
+        return @bridge.addCallback(@ip, @callbackPort, true)
+      .then (cbs)=>
+        cbs.on 'action', @stateHandler
+        cbs.on 'action', @batteryCriticalHandler
+      .finally ()=>
+        env.logger.debug "Callback on '#{@ip}' initialized"
+      .catch (err)=>
+        env.logger.debug "Error initializing callback" + err
 
       @base = commons.base @, 'Plugin'
 
@@ -51,19 +64,34 @@ module.exports = (env) ->
           for device in nukiDevices
             do (device) =>
               @lastId = @base.generateDeviceId @framework, "nuki", @lastId
+              if _.find(@framework.deviceManager.devicesConfig,(d) => 
+                #env.logger.debug "Discover---->: " +d.nukiId+ ", = "+device.nukiId
+                return d.nukiId is device.nukiId
+                )
+                env.logger.info "Device '" + device.nukiId + "' already in config"
+              else
+                deviceConfig =
+                  id: @lastId
+                  name: device.name
+                  class: 'NukiDevice'
+                  nukiId: String device.nukiId
 
-              deviceConfig =
-                id: @lastId
-                name: device.name
-                class: 'NukiDevice'
-                nukiId: String device.nukiId
-
-              @framework.deviceManager.discoveredDevice(
-                'pimatic-nuki-reloaded',
-                "#{deviceConfig.name} (#{deviceConfig.nukiId})",
-                deviceConfig
-              )
+                @framework.deviceManager.discoveredDevice(
+                  'pimatic-nuki-reloaded',
+                  "#{deviceConfig.name} (#{deviceConfig.nukiId})",
+                  deviceConfig
+                )
       )
+
+    stateHandler: (state,response) =>
+      resp =
+        state: state
+        response: response
+      #env.logger.debug "emitting action " + JSON.stringify(resp,null,2)
+      @emit 'action', resp
+
+    batteryCriticalHandler: (batteryCritical) =>
+      @emit 'batteryCritical', batteryCritical
 
 
   class NukiDevice extends env.devices.Device
@@ -103,6 +131,7 @@ module.exports = (env) ->
       @name = @config.name
 
       @nukiId = @config.nukiId
+      @ip = @plugin.ip
 
       env.logger.debug "Start constructor Nuki device"
 
@@ -111,6 +140,18 @@ module.exports = (env) ->
         type: "boolean"
         hidden: true
       )
+      @addAttribute('lock',
+        description: "Status of the lock"
+        type: "string"
+        acronym: "status"
+      )
+      ###
+      @addAttribute('door',
+        description: "Status of the door"
+        type: "string"
+        acronym: "door"
+      )
+      ###
       @addAttribute('battery',
         description: "Critical status of the battery"
         type: "boolean"
@@ -123,51 +164,40 @@ module.exports = (env) ->
         acronym: "batteryLevel"
         unit: "%"
       )
-      @addAttribute('lock',
-        description: "Status of the lock"
-        type: "string"
-        acronym: "status"
-      )
       env.logger.debug "Attribute battery and lock added"
 
       @_state = laststate?.state?.value ? false
       @_battery = laststate?.battery?.value ? false
       @_batteryLevel = laststate?.batteryLevel?.value ? 0
       @_lock = laststate?.lock?.value ? ""
-      env.logger.debug "Attributes state en lock initialized"
+      #@_door = laststate?.door?.value ? ""
+      env.logger.debug "Attributes state, lock, door and battery initialized"
 
-      #@plugin.framework.variableManager.waitForInit()
-      #.then ()=>
       @nuki = new NukiObject @plugin.bridge, @config.nukiId
-
       env.logger.debug "@nuki created"
 
-      #@nuki.on 'batteryCritical', ()=> @_setBattery false
+      @plugin.on 'action', @stateHandler
+      @plugin.on 'batteryCritical', @batteryCriticalHandler
 
-      internalIp.v4()
-      .then (ip)=>
-        env.logger.debug "Ip address for callback: " + ip
-        return @nuki.addCallback(ip, 12321, true)
-      .then (nuki)=>
-        nuki.on('action', @stateHandler)
-        env.logger.debug "Event handler created"
-        nuki.on 'batteryCritical', (battery)=> @_setBattery(battery ? true)
-        env.logger.debug "Battery handler added"
-        @nuki.getCallbacks().map((cb)=> 
-          env.logger.debug "Callbacks: " + cb.url
-        )
-      .finally ()=>
-        env.logger.debug "requesting state of the lock"
-        @_requestUpdate()
-        env.logger.debug "initialization finished"
-      .catch (err)=>
-        env.logger.debug "Error initializing " + err
+      @_requestUpdate()
 
       super()
 
     getTemplateName: -> "nuki"
 
-    stateHandler: (state, response)=>
+    batteryCriticalHandler: (battery, nukiId)=> 
+      unless nukiId is @nukiId then return
+      @_setBattery(battery ? true)
+
+    stateHandler: (_action)=>
+
+      unless (Number _action.response.nukiId) == Number(@nukiId) then return
+
+      state = _action.state
+      lastKnownState = _action.response.lastKnownState
+
+      #env.logger.debug "Receiving event: state = " + state + ", " + JSON.stringify(response,null,2)
+
       ###
       LockStateV1_2 =
         UNCALIBRATED: 0,
@@ -183,7 +213,7 @@ module.exports = (env) ->
       ###
 
       env.logger.debug "StateHandler, state received: " + state
-      env.logger.debug "StateHandler, response received: " + JSON.stringify(response,null,2)
+      env.logger.debug "StateHandler, response received: " + JSON.stringify(lastKnownState,null,2)
 
       switch state
         when nukiApi.lockState.LOCKED
@@ -215,10 +245,12 @@ module.exports = (env) ->
         else
           env.logger.debug "Unknown State received for '#{@id}', State nr: " + state
 
-      if response?.batteryCritical?
-        @_setBattery response.batteryCritical
-      if response?.batteryChargeState?
-        @_setBatteryLevel response.batteryChargeState
+      if lastKnownState?.batteryCritical?
+        @_setBattery lastKnownState.batteryCritical
+      if lastKnownState?.batteryChargeState?
+        @_setBatteryLevel lastKnownState.batteryChargeState
+      #if lastKnownState?.doorsensorStateName?
+      #  @_setDoor lastKnownState.doorsensorStateName
 
     actionHandler: (action)=>
       ###
@@ -270,20 +302,17 @@ module.exports = (env) ->
       #@base.cancelUpdate()
       env.logger.debug "Requesting update"
 
-      #@nuki.lockState()
       @plugin.bridge.list()
       .then (list) =>
-        env.logger.debug "Update list: #{@nukiId} " + JSON.stringify(list,null,2)
-        _nuki = _.find(list,(n)=>Number n.nukiId == Number @nukiId)
+        _nuki = _.find(list,(n)=>(Number n.nukiId) == (Number @nukiId))
         if _nuki?.lastKnownState?
           _state = _nuki.lastKnownState.state
           env.logger.debug "LockState is #{_state}"
           if typeof _state is "string"
             _state = parseInt _state
-          @stateHandler _state, _nuki.lastKnownState
-          #@_setState (state is nukiApi.lockState.LOCKED)
+          @stateHandler {state: _state, response: _nuki}
       .catch (error) =>
-        env.logger.error "Error:", error
+        env.logger.error "Error _requestUpdate:", error
       .finally () =>
         @scheduleUpdate = setTimeout(@_requestUpdate, @config.interval * 1000)
 
@@ -315,28 +344,31 @@ module.exports = (env) ->
           return Promise.reject()
 
     getState: () -> Promise.resolve @_state
-
     _setState: (state) =>
       @_state = state
       @emit 'state', state
 
     getBattery: () -> Promise.resolve @_battery
-
     _setBattery: (battery) =>
       @_battery = battery
       @emit 'battery', battery
 
     getBatteryLevel: () -> Promise.resolve @_batteryLevel
-
     _setBatteryLevel: (batteryLevel) =>
       @_batteryLevel = batteryLevel
       @emit 'batteryLevel', batteryLevel
 
     getLock: () -> Promise.resolve @_lock
-
     _setLock: (status) =>
       @_lock = status
       @emit 'lock', status
+
+    ###
+    getDoor: () -> Promise.resolve @_door
+    _setDoor: (state) =>
+      @_door = state
+      @emit 'door', state
+    ###
 
     execute: (command, options) =>
       return new Promise((resolve,reject) =>
@@ -378,8 +410,8 @@ module.exports = (env) ->
 
     destroy: () ->
       clearTimeout(@scheduleUpdate)
-      #@nuki.removeListener 'action', @stateHandler
-      @nuki.getCallbacks().map((cb)=> return cb.remove())
+      @plugin.removeListener 'action', @stateHandler
+      @plugin.removeListener 'batteryCritical', @batteryCriticalHandler
 
       super()
 

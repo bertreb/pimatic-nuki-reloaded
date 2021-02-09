@@ -30,3 +30,7 @@
   * added /info polling for batteryLevel
 * 20210208, V0.9.19
   * added xAttributeOptions
+* 20210209, V0.9.20
+  * single server callback for multiple nukis
+  * configurable callback port
+  * battery level polling timer to 6 hours
