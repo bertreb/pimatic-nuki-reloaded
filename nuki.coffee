@@ -64,7 +64,7 @@ module.exports = (env) ->
           for device in nukiDevices
             do (device) =>
               @lastId = @base.generateDeviceId @framework, "nuki", @lastId
-              if _.find(@framework.deviceManager.devicesConfig,(d) => 
+              if _.find(@framework.deviceManager.devicesConfig,(d) =>
                 #env.logger.debug "Discover---->: " +d.nukiId+ ", = "+device.nukiId
                 return d.nukiId is device.nukiId
                 )
@@ -132,6 +132,7 @@ module.exports = (env) ->
 
       @nukiId = @config.nukiId
       @ip = @plugin.ip
+      @configInterval = @config.interval ? 21600
 
       env.logger.debug "Start constructor Nuki device"
 
@@ -185,7 +186,7 @@ module.exports = (env) ->
 
     getTemplateName: -> "nuki"
 
-    batteryCriticalHandler: (battery, nukiId)=> 
+    batteryCriticalHandler: (battery, nukiId)=>
       unless nukiId is @nukiId then return
       @_setBattery(battery ? true)
 
@@ -312,9 +313,9 @@ module.exports = (env) ->
             _state = parseInt _state
           @stateHandler {state: _state, response: _nuki}
       .catch (error) =>
-        env.logger.error "Error _requestUpdate:", error
+        env.logger.error "Error _requestUpdate:", error.code
       .finally () =>
-        @scheduleUpdate = setTimeout(@_requestUpdate, @config.interval * 1000)
+        @scheduleUpdate = setTimeout(@_requestUpdate, @configInterval * 1000)
 
 
     changeStateTo: (state) ->
