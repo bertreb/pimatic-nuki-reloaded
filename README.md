@@ -47,7 +47,7 @@ Under Infos in the device config, you can add the extra information fields.
 The extra info fields will also be available as normal device variables.
 To check what extra info your bridge is providing you can use a web browser with the following url:
 ```
-  http://<ip address bridge>:<port number  bridge>/list?token=<your token>
+  http://<ip address bridge>:<port number bridge>/list?token=<your token>
 ```
 The response with hold the usable values in the 'lastKnownState' object. This is a formatted example of the response you can get.
 The values mode, state, stateName and batteryCritical are already used. If the rest is of interest you can add it.
