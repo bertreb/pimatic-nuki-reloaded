@@ -31,7 +31,8 @@ Per NukiDevice following fixed attributes (device variables) are available:
 ```
   state: if the lock is LOCKED or UINLOCKED
   lock: the status of the lock 
-    [UNCALIBRATED, LOCKED, UNLOCKING, UNLOCKED, LOCKING, UNLATCHED, UNLOCKED_LOCK_N_GO, UNLATCHING]
+    [UNCALIBRATED, LOCKED, UNLOCKING, UNLOCKED, LOCKING, 
+    UNLATCHED, UNLOCKED_LOCK_N_GO, UNLATCHING]
   battery: whether the battery is at a crital level (<=20%)
 ```
 You can add extra values/attributes provided by the Bridge. 
