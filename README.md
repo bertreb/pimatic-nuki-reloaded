@@ -1,6 +1,6 @@
 
-![Npm Version](http://badge.fury.io/js/pimatic-nuki-reloaded)
-![Dependency Status](https://david-dm.org/bertreb/pimatic-nuki-reloaded)
+[![npm version](https://badge.fury.io/js/pimatic-nuki-reloaded.svg)](https://badge.fury.io/js/pimatic-nuki-reloaded)
+![Dependency Status](https://david-dm.org/bertreb/pimatic-nuki-reloaded.svg)
 ![node-current](https://img.shields.io/node/v/pimatic-nuki-reloaded)
 
 # pimatic-nuki-reloaded
@@ -14,16 +14,17 @@ The upgrades are:
 
 ## Plugin Configuration
 
-  {
-    "plugin": "nuki-reloaded",
-    "active": true,
-    "debug": false,
-    "host": "ip address of the bridge",
-    "port": <port number of the bridge, default:8881>,
-    "callbackPort": <portnumber for callback from the bridge, default: 12321>,
-    "token": "token from the bridge"
-  }
-
+```
+{
+  "plugin": "nuki-reloaded",
+  "active": true,
+  "debug": false,
+  "host": "ip address of the bridge",
+  "port": <port number of the bridge, default:8881>,
+  "callbackPort": <portnumber for callback from the bridge, default: 12321>,
+  "token": "token from the bridge"
+}
+```
 ## Device Configuration
 
 Use the "Discover Devices" function provided by pimatic to automatically discover and setup NukiDevices.
