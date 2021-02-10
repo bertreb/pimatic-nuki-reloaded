@@ -39,12 +39,31 @@ Per NukiDevice following fixed attributes (device variables) are available:
 You can add extra values/attributes provided by the Bridge. 
 Under Infos in the device config, you can add the extra information fields.
 ```
-  name: "The name for the value used by the Nuki Bridge. Must be exactly the same and is thus case sensitive"
-  type: "The type of the info attribute"
-  unit: "The optional unit of the info attribute"
-  acronym: "The optional acronym of the info attribute"
+  name: The name for the value used by the Nuki Bridge. Must be exactly the same and is thus case sensitive
+  type: The type of the info attribute [string|boolean|number]
+  unit: The optional unit of the info attribute
+  acronym: The optional acronym of the info attribute
 ```
 The extra info fields will also be available as normal device variables.
+To check what extra info youre bridge is providing you can use a webbrowser with the following url
+```
+  http://<ip address of bridg>:<port number of bridge>/list?token=<your token>
+```
+The response with hold the useable values in the 'lastKnownState' object. This is a formatted example of the response you can get.
+The values mode, state, stateName and batteryCritical are already used. If the rest is of interest you can add it.
+```
+      "lastKnownState": {
+            "mode": 2,
+            "state": 3,
+            "stateName": "unlocked",
+            "batteryCritical": false,
+            "batteryCharging": false,
+            "batteryChargeState": 74,
+            "doorsensorState": 2,
+            "doorsensorStateName": "door closed",
+            "timestamp": "2021-02-10T19:26:35+00:00"
+          }
+```
 ## Rules
 Locks can be controlled via rules
 
