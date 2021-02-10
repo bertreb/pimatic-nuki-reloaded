@@ -31,7 +31,9 @@ Use the "Discover Devices" function provided by pimatic to automatically discove
 Per NukiDevice following attributes are available
 ```
   state: if the lock is LOCKED or UINLOCKED
-  lock: the status of the lock [UNCALIBRATED,LOCKED,UNLOCKING,UNLOCKED,LOCKING,UNLATCHED,UNLOCKED_LOCK_N_GO,UNLATCHING]
+  lock: the status of the lock 
+        [UNCALIBRATED, LOCKED, UNLOCKING, UNLOCKED,
+        LOCKING, UNLATCHED, UNLOCKED_LOCK_N_GO, UNLATCHING]
   battery: whether the battery is at a crital level (<=20%)
   batteryLevel: the battery charge level (0-100%)
 ```
