@@ -1,6 +1,7 @@
 
 [![Npm Version](https://badge.fury.io/js/pimatic-nuki-reloaded.svg)](http://badge.fury.io/js/pimatic-nuki-reloaded)
 [![Dependency Status](https://david-dm.org/bertreb/pimatic-nuki-reloaded.svg)](https://david-dm.org/bertreb/pimatic-nuki-reloaded)
+![node-current](https://img.shields.io/node/v/pimatic-nuki-reloaded)
 
 # pimatic-nuki-reloaded
 Pimatic reloaded plugin for controlling Nuki doorlocks.
@@ -31,10 +32,19 @@ Per NukiDevice following attributes are available
 	state: if the lock is LOCKED or UINLOCKED
 	lock: the status of the lock [UNCALIBRATED,LOCKED,UNLOCKING,UNLOCKED,LOCKING,UNLATCHED,UNLOCKED_LOCK_N_GO,UNLATCHING]
 	battery: whether the battery is at a crital level (<=20%)
-	batteryLevel: the batteryy charge level (0-100%)
+	batteryLevel: the battery charge level (0-100%)
 ```
 
 ## Rules
+Locks can be controlled via rules
 
+The action syntax:
+```
+  nuki <NukiDevice Id> [lock | unlock]
+```
 
+---
+The minimum node requirement is node 10.x.
+
+The plugin is in development. You could backup Pimatic before you are using this plugin!
 
