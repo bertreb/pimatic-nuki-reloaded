@@ -34,5 +34,7 @@
   * single server callback for multiple nukis
   * configurable callback port
   * battery level polling timer to 6 hours
-* 20210208, V0.9.21
+* 20210209, V0.9.21
   * error handling if bridge is unavailable
+* 20210210, V0.9.22
+  * callback handling if bridge is unavailable

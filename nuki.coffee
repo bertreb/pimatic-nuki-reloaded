@@ -18,18 +18,32 @@ module.exports = (env) ->
       env.logger.debug "New nukiApi.Bridge created"
 
       @callbackPort = @config.callbackPort ? 12321
+
       internalIp.v4()
       .then (ip)=>
         @ip = ip
         env.logger.debug "Ip address for callback: " + @ip
-        return @bridge.addCallback(@ip, @callbackPort, true)
+        return @bridge.getCallbackUrls()
+      .then (urls)=>
+        if _.size(urls)>=3
+          env.logger.info "Maximum number of callbacks reached on Nuki bridge"
+          env.logger.info "Please remove a callback and restart the plugin"
+          throw new Error("Maximum number of callbacks reached on Nuki bridge")
+        else
+          return @bridge.addCallback(@ip, @callbackPort, true)
       .then (cbs)=>
         cbs.on 'action', @stateHandler
         cbs.on 'action', @batteryCriticalHandler
       .finally ()=>
+        @emit 'bridgeReady'
         env.logger.debug "Callback on '#{@ip}' initialized"
       .catch (err)=>
-        env.logger.debug "Error initializing callback" + err
+        switch err.code
+          when 'ECONNREFUSED'
+            env.logger.info "Nuki bridge can't be reached"
+            env.logger.info "Enable the bridge and restart the plugin"
+          else
+            env.logger.debug "Info initializing callback: " + err
 
       @base = commons.base @, 'Plugin'
 
@@ -91,6 +105,7 @@ module.exports = (env) ->
       @emit 'action', resp
 
     batteryCriticalHandler: (batteryCritical) =>
+      #env.logger.debug "emitting batteryCritical"
       @emit 'batteryCritical', batteryCritical
 
 
@@ -165,22 +180,26 @@ module.exports = (env) ->
         acronym: "batteryLevel"
         unit: "%"
       )
-      env.logger.debug "Attribute battery and lock added"
 
       @_state = laststate?.state?.value ? false
       @_battery = laststate?.battery?.value ? false
       @_batteryLevel = laststate?.batteryLevel?.value ? 0
       @_lock = laststate?.lock?.value ? ""
       #@_door = laststate?.door?.value ? ""
-      env.logger.debug "Attributes state, lock, door and battery initialized"
 
-      @nuki = new NukiObject @plugin.bridge, @config.nukiId
-      env.logger.debug "@nuki created"
+      @plugin.on 'bridgeReady', @bridgeReadyHandler = ()=>
 
-      @plugin.on 'action', @stateHandler
-      @plugin.on 'batteryCritical', @batteryCriticalHandler
+        env.logger.debug "BridgeReady received for " + @id
+        
+        @nuki = new NukiObject @plugin.bridge, @config.nukiId
+        env.logger.debug "@nuki created for " + @id
 
-      @_requestUpdate()
+        @plugin.on 'action', @stateHandler
+        env.logger.debug "State handler created for " + @id
+        @plugin.on 'batteryCritical', @batteryCriticalHandler
+        env.logger.debug "BatteryCritical handler created for " + @id
+
+        @_requestUpdate()
 
       super()
 
@@ -197,8 +216,6 @@ module.exports = (env) ->
       state = _action.state
       lastKnownState = _action.response.lastKnownState
 
-      #env.logger.debug "Receiving event: state = " + state + ", " + JSON.stringify(response,null,2)
-
       ###
       LockStateV1_2 =
         UNCALIBRATED: 0,
@@ -214,7 +231,7 @@ module.exports = (env) ->
       ###
 
       env.logger.debug "StateHandler, state received: " + state
-      env.logger.debug "StateHandler, response received: " + JSON.stringify(lastKnownState,null,2)
+      env.logger.debug "StateHandler, lastKnownState received: " + JSON.stringify(lastKnownState,null,2)
 
       switch state
         when nukiApi.lockState.LOCKED
@@ -263,9 +280,9 @@ module.exports = (env) ->
         LOCK_N_GO_WITH_UNLATCH: 5
       ###
 
-      ###
-      env.logger.debug "ActionHandler, check @plugin.bridge.list.isFulfilled -> ready"
+      #env.logger.debug "ActionHandler, check @plugin.bridge.list.isFulfilled -> ready"
 
+      ###
       unless @plugin.bridge.list?.isFulfilled?
         env.logger.debug "Nuki not ready"
         return
@@ -276,7 +293,7 @@ module.exports = (env) ->
         return
       ###
 
-      env.logger.debug "ActionHandler, action received: " + action
+      env.logger.debug "ActionHandler, action received: " + JSON.stringify(action,null,2)
 
       switch action
         when nukiApi.lockAction.LOCK
@@ -313,7 +330,7 @@ module.exports = (env) ->
             _state = parseInt _state
           @stateHandler {state: _state, response: _nuki}
       .catch (error) =>
-        env.logger.error "Error _requestUpdate:", error.code
+        env.logger.error "Error requesting update: ", error.code
       .finally () =>
         @scheduleUpdate = setTimeout(@_requestUpdate, @configInterval * 1000)
 
@@ -413,6 +430,7 @@ module.exports = (env) ->
       clearTimeout(@scheduleUpdate)
       @plugin.removeListener 'action', @stateHandler
       @plugin.removeListener 'batteryCritical', @batteryCriticalHandler
+      @plugin.removeListener 'bridgeReady', @bridgeReadyHandler
 
       super()
 
