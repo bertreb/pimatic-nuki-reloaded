@@ -1,6 +1,6 @@
 
-[![Npm Version](https://badge.fury.io/js/pimatic-nuki-reloaded.svg)](http://badge.fury.io/js/pimatic-nuki-reloaded)
-[![Dependency Status](https://david-dm.org/bertreb/pimatic-nuki-reloaded.svg)](https://david-dm.org/bertreb/pimatic-nuki-reloaded)
+![Npm Version](http://badge.fury.io/js/pimatic-nuki-reloaded)
+![Dependency Status](https://david-dm.org/bertreb/pimatic-nuki-reloaded)
 ![node-current](https://img.shields.io/node/v/pimatic-nuki-reloaded)
 
 # pimatic-nuki-reloaded
