@@ -10,6 +10,7 @@ The upgrades are:
 - callback for lock events (instead of polling)
 - button style lock and unlock in gui
 - rules actions for locking and unlocking
+- configurable adding of extra info fields
 
 ## Plugin Configuration
 
