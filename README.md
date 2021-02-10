@@ -1,6 +1,5 @@
 
 [![npm version](https://badge.fury.io/js/pimatic-nuki-reloaded.svg)](https://badge.fury.io/js/pimatic-nuki-reloaded)
-![Dependency Status](https://david-dm.org/bertreb/pimatic-nuki-reloaded.svg)
 ![node-current](https://img.shields.io/node/v/pimatic-nuki-reloaded)
 
 # pimatic-nuki-reloaded
@@ -32,12 +31,11 @@ Per NukiDevice following attributes are available
 ```
   state: if the lock is LOCKED or UINLOCKED
   lock: the status of the lock 
-        [UNCALIBRATED, LOCKED, UNLOCKING, UNLOCKED,
-        LOCKING, UNLATCHED, UNLOCKED_LOCK_N_GO, UNLATCHING]
+    [UNCALIBRATED, LOCKED, UNLOCKING, UNLOCKED, LOCKING, UNLATCHED, UNLOCKED_LOCK_N_GO, UNLATCHING]
   battery: whether the battery is at a crital level (<=20%)
   batteryLevel: the battery charge level (0-100%)
 ```
-
+Battery level only if supported by the bridge.
 ## Rules
 Locks can be controlled via rules
 
