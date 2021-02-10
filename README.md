@@ -45,7 +45,7 @@ Under Infos in the device config, you can add the extra information fields.
   acronym: The optional acronym of the info attribute
 ```
 The extra info fields will also be available as normal device variables.
-To check what extra info your bridge is providing you can use a webbrowser with the following url
+To check what extra info your bridge is providing you can use a web browser with the following url:
 ```
   http://<ip address of bridg>:<port number of bridge>/list?token=<your token>
 ```
