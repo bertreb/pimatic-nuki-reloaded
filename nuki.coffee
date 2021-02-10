@@ -18,6 +18,7 @@ module.exports = (env) ->
       env.logger.debug "New nukiApi.Bridge created"
 
       @callbackPort = @config.callbackPort ? 12321
+      @bridgeReady = false
 
       internalIp.v4()
       .then (ip)=>
@@ -36,6 +37,7 @@ module.exports = (env) ->
         cbs.on 'action', @batteryCriticalHandler
       .finally ()=>
         @emit 'bridgeReady'
+        @bridgeReady = true
         env.logger.debug "Callback on '#{@ip}' initialized"
       .catch (err)=>
         switch err.code
@@ -44,6 +46,8 @@ module.exports = (env) ->
             env.logger.info "Enable the bridge and restart the plugin"
           else
             env.logger.debug "Info initializing callback: " + err
+        @bridgeReady = false
+
 
       @base = commons.base @, 'Plugin'
 
@@ -119,28 +123,6 @@ module.exports = (env) ->
           state:
             type: "boolean"
 
-
-    ###
-    LockStateV1_2 =
-      UNCALIBRATED: 0,
-      LOCKED: 1,
-      UNLOCKING: 2,
-      UNLOCKED: 3,
-      LOCKING: 4,
-      UNLATCHED: 5,
-      UNLOCKED_LOCK_N_GO: 6,
-      UNLATCHING: 7,
-      MOTOR_BLOCKED: 254,
-      UNDEFINED: 255
-
-    LockAction =
-      UNLOCK: 1,
-      LOCK: 2,
-      UNLATCH: 3,
-      LOCK_N_GO: 4,
-      LOCK_N_GO_WITH_UNLATCH: 5
-    ###
-
     constructor: (@config, @plugin, lastState) ->
       @id = @config.id
       @name = @config.name
@@ -151,6 +133,7 @@ module.exports = (env) ->
 
       env.logger.debug "Start constructor Nuki device"
 
+      # attributes state is used for gui button
       @addAttribute('state',
         description: "State of the lock"
         type: "boolean"
@@ -161,32 +144,43 @@ module.exports = (env) ->
         type: "string"
         acronym: "status"
       )
-      ###
-      @addAttribute('door',
-        description: "Status of the door"
-        type: "string"
-        acronym: "door"
-      )
-      ###
       @addAttribute('battery',
         description: "Critical status of the battery"
         type: "boolean"
         acronym: "battery"
         labels: ["critical","ok"]
       )
-      @addAttribute('batteryLevel',
-        description: "Battery level"
-        type: "number"
-        acronym: "batteryLevel"
-        unit: "%"
-      )
 
+      # fixed attributes
       @_state = laststate?.state?.value ? false
       @_battery = laststate?.battery?.value ? false
-      @_batteryLevel = laststate?.batteryLevel?.value ? 0
       @_lock = laststate?.lock?.value ? ""
-      #@_door = laststate?.door?.value ? ""
 
+      #creation of extra info attributes
+      for info in @config.infos
+        do (info) =>
+          env.logger.debug "Info: " + JSON.stringify(info,null,2)
+          @addAttribute(info.name ,
+            description: info.name
+            type: info.type ? "string"
+            acronym: info.acronym ? info.name
+            unit: info.unit ? ""
+          )
+
+          if info.type is "number"
+            @[addUnderscore info.name] = laststate?[info.name]?.value ? 0
+          else if @attributes[info.name].type is "boolean"
+            @[addUnderscore info.name] = laststate?[info.name]?.value ? false
+          else
+            @[addUnderscore info.name] = laststate?[info.name]?.value ? ""
+
+          env.logger.debug "@_[info.name] " + @[addUnderscore info.name]
+
+          @_createGetter(info.name, =>
+            return Promise.resolve @[addUnderscore info.name]
+          )
+
+      #initialization on restart of plugin/pimatic
       @plugin.on 'bridgeReady', @bridgeReadyHandler = ()=>
 
         env.logger.debug "BridgeReady received for " + @id
@@ -201,9 +195,24 @@ module.exports = (env) ->
 
         @_requestUpdate()
 
+      #initialization on restart of device
+      if @plugin.bridgeReady
+        @nuki = new NukiObject @plugin.bridge, @config.nukiId
+        env.logger.debug "@nuki created for " + @id
+
+        @plugin.on 'action', @stateHandler
+        env.logger.debug "State handler created for " + @id
+        @plugin.on 'batteryCritical', @batteryCriticalHandler
+        env.logger.debug "BatteryCritical handler created for " + @id
+
+        @_requestUpdate()
+
       super()
 
     getTemplateName: -> "nuki"
+
+    addUnderscore = (name)->
+      return "_" + name
 
     batteryCriticalHandler: (battery, nukiId)=>
       unless nukiId is @nukiId then return
@@ -214,7 +223,7 @@ module.exports = (env) ->
       unless (Number _action.response.nukiId) == Number(@nukiId) then return
 
       state = _action.state
-      lastKnownState = _action.response.lastKnownState
+      lastKnownState = _action.response?.lastKnownState ? _action.response
 
       ###
       LockStateV1_2 =
@@ -265,10 +274,18 @@ module.exports = (env) ->
 
       if lastKnownState?.batteryCritical?
         @_setBattery lastKnownState.batteryCritical
-      if lastKnownState?.batteryChargeState?
-        @_setBatteryLevel lastKnownState.batteryChargeState
-      #if lastKnownState?.doorsensorStateName?
-      #  @_setDoor lastKnownState.doorsensorStateName
+
+      #check if extra info values are received
+      for info in @config.infos
+        if lastKnownState?[info.name]?
+          switch info.type
+            when "number"
+              @[addUnderscore info.name] = Number lastKnownState[info.name]
+            when "boolean"
+              @[addUnderscore info.name] = Boolean lastKnownState[info.name]
+            else
+              @[addUnderscore info.name] = lastKnownState[info.name]
+          @emit info.name, @[addUnderscore info.name]
 
     actionHandler: (action)=>
       ###
@@ -278,19 +295,6 @@ module.exports = (env) ->
         UNLATCH: 3,
         LOCK_N_GO: 4,
         LOCK_N_GO_WITH_UNLATCH: 5
-      ###
-
-      #env.logger.debug "ActionHandler, check @plugin.bridge.list.isFulfilled -> ready"
-
-      ###
-      unless @plugin.bridge.list?.isFulfilled?
-        env.logger.debug "Nuki not ready"
-        return
-
-      unless @plugin.bridge.list.isFulfilled
-        env.logger.debug "Nuki not ready"
-        @_setLock "not ready"
-        return
       ###
 
       env.logger.debug "ActionHandler, action received: " + JSON.stringify(action,null,2)
@@ -317,7 +321,6 @@ module.exports = (env) ->
       Promise.resolve()
 
     _requestUpdate: () =>
-      #@base.cancelUpdate()
       env.logger.debug "Requesting update"
 
       @plugin.bridge.list()
@@ -330,17 +333,12 @@ module.exports = (env) ->
             _state = parseInt _state
           @stateHandler {state: _state, response: _nuki}
       .catch (error) =>
-        env.logger.error "Error requesting update: ", error.code
+        env.logger.error "Error requesting update: " + (error.code ? error)
       .finally () =>
         @scheduleUpdate = setTimeout(@_requestUpdate, @configInterval * 1000)
 
 
     changeStateTo: (state) ->
-      #unless @plugin.bridge.list.isFulfilled
-      #  env.logger.info "Nuki not ready"
-      #  @_setLock "not ready"
-      #  @_setState state
-      #  return Promise.resolve()
       if state is @_state then return
       if Boolean state
         @actionHandler(nukiApi.lockAction.LOCK)
@@ -371,30 +369,13 @@ module.exports = (env) ->
       @_battery = battery
       @emit 'battery', battery
 
-    getBatteryLevel: () -> Promise.resolve @_batteryLevel
-    _setBatteryLevel: (batteryLevel) =>
-      @_batteryLevel = batteryLevel
-      @emit 'batteryLevel', batteryLevel
-
     getLock: () -> Promise.resolve @_lock
     _setLock: (status) =>
       @_lock = status
       @emit 'lock', status
 
-    ###
-    getDoor: () -> Promise.resolve @_door
-    _setDoor: (state) =>
-      @_door = state
-      @emit 'door', state
-    ###
-
     execute: (command, options) =>
       return new Promise((resolve,reject) =>
-
-        #unless @plugin.bridge.list.isFulfilled
-        #  @_setLock "not ready"
-        #  reject()
-        #  return
 
         env.logger.debug "Execute command: " + command + ", options: " + JSON.stringify(options,null,2)
         switch command
@@ -439,7 +420,6 @@ module.exports = (env) ->
     constructor: (@framework) ->
 
     parseAction: (input, context) =>
-
 
       nukiDevice = null
       @options = {}
@@ -504,6 +484,6 @@ module.exports = (env) ->
 
 
   # ###Finally
-  # Create a instance of my plugin
+  # Create a instance of NukiPlugin
   # and return it to the framework.
   return new NukiPlugin
