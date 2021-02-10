@@ -45,11 +45,11 @@ Under Infos in the device config, you can add the extra information fields.
   acronym: The optional acronym of the info attribute
 ```
 The extra info fields will also be available as normal device variables.
-To check what extra info youre bridge is providing you can use a webbrowser with the following url
+To check what extra info your bridge is providing you can use a webbrowser with the following url
 ```
   http://<ip address of bridg>:<port number of bridge>/list?token=<your token>
 ```
-The response with hold the useable values in the 'lastKnownState' object. This is a formatted example of the response you can get.
+The response with hold the usable values in the 'lastKnownState' object. This is a formatted example of the response you can get.
 The values mode, state, stateName and batteryCritical are already used. If the rest is of interest you can add it.
 ```
       "lastKnownState": {
