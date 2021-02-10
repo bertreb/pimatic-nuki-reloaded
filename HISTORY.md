@@ -38,3 +38,4 @@
   * error handling if bridge is unavailable
 * 20210210, V0.9.22
   * callback handling if bridge is unavailable
+  * added extra configurable info fields
