@@ -31,12 +31,12 @@ Use the "Discover Devices" function provided by pimatic to automatically discove
 Per NukiDevice following fixed attributes (device variables) are available:
 ```
   state: if the lock is LOCKED or UINLOCKED
-  lock: the status of the lock 
-    [UNCALIBRATED, LOCKED, UNLOCKING, UNLOCKED, LOCKING, 
+  lock: the status of the lock
+    [UNCALIBRATED, LOCKED, UNLOCKING, UNLOCKED, LOCKING,
     UNLATCHED, UNLOCKED_LOCK_N_GO, UNLATCHING]
   battery: whether the battery is at a crital level (<=20%)
 ```
-You can add extra values/attributes provided by the Bridge. 
+You can add extra values/attributes provided by the Bridge.
 Under Infos in the device config, you can add the extra information fields.
 ```
   name: The name for the value used by the Nuki Bridge. Must be exactly the same and is thus case sensitive
@@ -47,7 +47,7 @@ Under Infos in the device config, you can add the extra information fields.
 The extra info fields will also be available as normal device variables.
 To check what extra info your bridge is providing you can use a web browser with the following url:
 ```
-  http://<ip address of bridg>:<port number of bridge>/list?token=<your token>
+  http://<ip address bridge>:<port number  bridge>/list?token=<your token>
 ```
 The response with hold the usable values in the 'lastKnownState' object. This is a formatted example of the response you can get.
 The values mode, state, stateName and batteryCritical are already used. If the rest is of interest you can add it.
@@ -76,4 +76,3 @@ The action syntax:
 The minimum node requirement is node 10.x.
 
 The plugin is in development. You could backup Pimatic before you are using this plugin!
-
