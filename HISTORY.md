@@ -39,3 +39,6 @@
 * 20210210, V0.9.22
   * callback handling if bridge is unavailable
   * added extra configurable info fields
+* 20210210, V0.9.23
+  * added pulldown for device type
+  * localization for buttons

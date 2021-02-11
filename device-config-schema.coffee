@@ -20,6 +20,7 @@ module.exports = {
             type:
               description: " The type of the info attribute"
               type: "string"
+              enum: ["string","boolean","number"]
             unit:
               description: "The optional unit of the info attribute"
               type: "string"
