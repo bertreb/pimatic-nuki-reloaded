@@ -1,6 +1,6 @@
 
-[![npm version](https://badge.fury.io/js/pimatic-nuki-reloaded.svg)](https://badge.fury.io/js/pimatic-nuki-reloaded)
-![node-current](https://img.shields.io/node/v/pimatic-nuki-reloaded)
+<!--- [![npm version](https://badge.fury.io/js/pimatic-nuki-reloaded.svg)](https://badge.fury.io/js/pimatic-nuki-reloaded)
+![node-current](https://img.shields.io/node/v/pimatic-nuki-reloaded) -->
 
 # pimatic-nuki-reloaded
 Pimatic reloaded plugin for controlling Nuki doorlocks.
