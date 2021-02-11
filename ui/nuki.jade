@@ -6,4 +6,21 @@ script#nuki-template(type='text/template')
         .ui-controlgroup-controls
           a.ui-first-child.ui-btn.ui-corner-all(name='unlockButton', data-bind='click: stateOff')=__('unlock')
           a.ui-last-child.ui-btn.ui-corner-all(name='lockButton', data-bind='click: stateOn')=__('lock')
-    span.attributes(data-bind="template: { name: 'attribute-template', foreach: $data.device.attributes, afterRender: $data.afterAttributeRender }")
+    span.attributes(data-bind="template: { name: 'attribute-template-nuki', foreach: $data.device.attributes, afterRender: $data.afterAttributeRender }")
+script#attribute-template-nuki(type='text/template')
+  <!-- ko if: !$data.hidden -->
+  span.attribute(data-bind="tooltip: $data.tooltipHtml, css: {outOfDate: $data.outOfDate()}")
+    <!-- ko if: $data.shouldDisplayAcronym() -->
+    span.acronym(data-bind="text: __($data.displayAcronym())")
+    <!-- /ko -->
+    <!-- ko if: $data.shouldDisplayIcon() -->
+    span.attribute-icon(data-bind="css: $data.getIconClass()")
+    <!-- /ko -->
+    <!-- ko if: $data.shouldDisplayValue() -->
+    span.val(data-bind="text: __($data.displayValueText())")
+    span.unit(data-bind="text: $data.displayUnitText()")
+    <!-- /ko -->
+    <!-- ko if: $data.shouldDisplaySparkline() -->
+    span.sparkline(data-bind="sparkline: {data: $data.sparklineHistory, tooltipFormatter: $data.tooltipFormatter}")
+    <!-- /ko -->
+  <!-- /ko -->
