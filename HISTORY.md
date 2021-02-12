@@ -44,3 +44,5 @@
   * localization for buttons
 * 20210211, V0.9.24
   * localization for atribute acronyms and values
+* 20210212, V0.9.25
+  * edit engines node and npm

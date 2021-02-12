@@ -26,16 +26,19 @@ module.exports = (env) ->
         env.logger.debug "Ip address for callback: " + @ip
         return @bridge.getCallbackUrls()
       .then (urls)=>
+        env.logger.debug "Current callbacks: " + JSON.stringify(urls,null,2)
         if _.size(urls)>=3
           env.logger.info "Maximum number of callbacks reached on Nuki bridge"
           env.logger.info "Please remove a callback and restart the plugin"
           throw new Error("Maximum number of callbacks reached on Nuki bridge")
         else
+          env.logger.info "Adding callback"
           return @bridge.addCallback(@ip, @callbackPort, true)
       .then (cbs)=>
+        #env.logger.debug "Callback added " + JSON.stringify(cbs,null,2)
         cbs.on 'action', @stateHandler
         cbs.on 'action', @batteryCriticalHandler
-      .finally ()=>
+      .then ()=>
         @emit 'bridgeReady'
         @bridgeReady = true
         env.logger.debug "Callback on '#{@ip}' initialized"
@@ -184,7 +187,7 @@ module.exports = (env) ->
       @plugin.on 'bridgeReady', @bridgeReadyHandler = ()=>
 
         env.logger.debug "BridgeReady received for " + @id
-        
+
         @nuki = new NukiObject @plugin.bridge, @config.nukiId
         env.logger.debug "@nuki created for " + @id
 
