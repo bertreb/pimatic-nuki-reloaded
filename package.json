@@ -21,7 +21,7 @@
     "Nuki.io",
     "Pimatic"
   ],
-  "version": "0.9.25",
+  "version": "0.9.26",
   "homepage": "https://github.com/bertreb/pimatic-nuki-reloaded/tree/master",
   "private": false,
   "repository": {
@@ -54,7 +54,7 @@
     "pimatic": ">=0.8.0 <1.0.0"
   },
   "engines": {
-    "node": ">=10",
-    "npm": ">=2"
+    "node": ">0.8.x",
+    "npm": ">1.1.x"
   }
 }

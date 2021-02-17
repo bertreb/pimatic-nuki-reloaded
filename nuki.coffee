@@ -18,39 +18,53 @@ module.exports = (env) ->
       env.logger.debug "New nukiApi.Bridge created"
 
       @callbackPort = @config.callbackPort ? 12321
+      @restartTime = @config.restartTime ? 60000
+      @nrOfRestarts = 10
       @bridgeReady = false
 
-      internalIp.v4()
-      .then (ip)=>
-        @ip = ip
-        env.logger.debug "Ip address for callback: " + @ip
-        return @bridge.getCallbackUrls()
-      .then (urls)=>
-        env.logger.debug "Current callbacks: " + JSON.stringify(urls,null,2)
-        if _.size(urls)>=3
-          env.logger.info "Maximum number of callbacks reached on Nuki bridge"
-          env.logger.info "Please remove a callback and restart the plugin"
-          throw new Error("Maximum number of callbacks reached on Nuki bridge")
-        else
-          env.logger.info "Adding callback"
-          return @bridge.addCallback(@ip, @callbackPort, true)
-      .then (cbs)=>
-        #env.logger.debug "Callback added " + JSON.stringify(cbs,null,2)
-        cbs.on 'action', @stateHandler
-        cbs.on 'action', @batteryCriticalHandler
-      .then ()=>
-        @emit 'bridgeReady'
-        @bridgeReady = true
-        env.logger.debug "Callback on '#{@ip}' initialized"
-      .catch (err)=>
-        switch err.code
-          when 'ECONNREFUSED'
-            env.logger.info "Nuki bridge can't be reached"
-            env.logger.info "Enable the bridge and restart the plugin"
+      @connectNuki = () =>
+        internalIp.v4()
+        .then (ip)=>
+          @ip = ip
+          env.logger.debug "Ip address for callback: " + @ip
+          return @bridge.getCallbackUrls()
+        .then (urls)=>
+          env.logger.debug "Current callbacks: " + JSON.stringify(urls,null,2)
+          if _.size(urls)>=3
+            env.logger.info "Maximum number of callbacks reached on Nuki bridge"
+            if @nrOfRestarts > 0
+              env.logger.info "Please remove a callback on the bridge. The connection to the bridge will restart in " + @restartTime/1000 + " seconds. " + @nrOfRestarts + " restarts left."
+              @nrOfRestarts -= 1
+              @retryTimer = setTimeout(@connectNuki,@restartTime)
+            else
+              env.logger.info "Restarts unsuccesful. Please remove a callback on the bridge and restart the plugin"
+            throw new Error("Maximum number of callbacks reached on Nuki bridge")
           else
-            env.logger.debug "Info initializing callback: " + err
-        @bridgeReady = false
+            env.logger.info "Adding callback"
+            return @bridge.addCallback(@ip, @callbackPort, true)
+        .then (cbs)=>
+          #env.logger.debug "Callback added " + JSON.stringify(cbs,null,2)
+          cbs.on 'action', @stateHandler
+          cbs.on 'action', @batteryCriticalHandler
+        .finally ()=>
+          @emit 'bridgeReady'
+          @bridgeReady = true
+          env.logger.debug "Callback on '#{@ip}' initialized"
+        .catch (err)=>
+          switch err.code
+            when 'ECONNREFUSED'
+              env.logger.info "Nuki bridge can't be reached"
+              if @nrOfRestarts > 0
+                env.logger.info "Please enable the bridge. The connection to the bridge will restart in " + @restartTime/1000 + " seconds. " + @nrOfRestarts + " restarts left."
+                @nrOfRestarts -= 1
+                @retryTimer = setTimeout(@connectNuki,@restartTime)
+              else
+                env.logger.info "Restarts unsuccesful. Please enable the bridge and restart the plugin"
+            else
+              env.logger.debug "Info initializing callback: " + err
+          @bridgeReady = false
 
+      @connectNuki()
 
       @base = commons.base @, 'Plugin'
 
@@ -158,6 +172,7 @@ module.exports = (env) ->
       @_state = laststate?.state?.value ? false
       @_battery = laststate?.battery?.value ? false
       @_lock = laststate?.lock?.value ? ""
+
 
       #creation of extra info attributes
       for info in @config.infos

@@ -46,3 +46,5 @@
   * localization for atribute acronyms and values
 * 20210212, V0.9.25
   * edit engines node and npm
+* 20210217, V0.9.26
+  * package edit
