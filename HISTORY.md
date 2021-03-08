@@ -48,3 +48,5 @@
   * edit engines node and npm
 * 20210217, V0.9.26
   * package edit
+* 20210217, V0.9.27
+  * edit max callbacks

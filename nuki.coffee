@@ -38,7 +38,7 @@ module.exports = (env) ->
               @retryTimer = setTimeout(@connectNuki,@restartTime)
             else
               env.logger.info "Restarts unsuccesful. Please remove a callback on the bridge and restart the plugin"
-            throw new Error("Maximum number of callbacks reached on Nuki bridge")
+              throw new Error("Maximum number of callbacks reached on Nuki bridge, Please remove a callback on the bridge and restart the plugin")
           else
             env.logger.info "Adding callback"
             return @bridge.addCallback(@ip, @callbackPort, true)
