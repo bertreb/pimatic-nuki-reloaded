@@ -27,7 +27,7 @@ The upgrades are:
 ```
 ### Callback
 The callback is set on startup of the plugin. The Nuki bridge supports a maximum of 3 callbacks. When that number is exceeded you get an error message to remove callbacks from the bridge. The plugin retries 10 times every minute to create a callback. In that time you can delete 1 or more callbacks from the bridge.
-Please restart the plugin in any other case to be sure the callback is created.
+Please restart the plugin (pimatic) in any other case to be sure the callback is created.
 
 ## Device Configuration
 
