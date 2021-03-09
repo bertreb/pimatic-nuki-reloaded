@@ -50,3 +50,7 @@
   * package edit
 * 20210217, V0.9.27
   * edit max callbacks
+* 20210309, V0.9.28
+  * refresh callbacks on startup
+  * add status field
+  * add all lockStates

@@ -40,6 +40,11 @@ module.exports = (env) ->
               env.logger.info "Restarts unsuccesful. Please remove a callback on the bridge and restart the plugin"
               throw new Error("Maximum number of callbacks reached on Nuki bridge, Please remove a callback on the bridge and restart the plugin")
           else
+            for cb in urls
+              _url = @ip + ":" + @callbackPort
+              if String(cb.url).indexOf(_url)>=0
+                env.logger.debug "callback found, deleting"
+                @bridge.removeCallback(cb.id)
             env.logger.info "Adding callback"
             return @bridge.addCallback(@ip, @callbackPort, true)
         .then (cbs)=>
@@ -159,6 +164,12 @@ module.exports = (env) ->
       @addAttribute('lock',
         description: "Status of the lock"
         type: "string"
+        acronym: "door"
+        hidden: false
+      )
+      @addAttribute('status',
+        description: "Status of the communicsation and lock"
+        type: "string"
         acronym: "status"
       )
       @addAttribute('battery',
@@ -172,6 +183,7 @@ module.exports = (env) ->
       @_state = laststate?.state?.value ? false
       @_battery = laststate?.battery?.value ? false
       @_lock = laststate?.lock?.value ? ""
+      @_status = laststate?.status?.value ? "ready"
 
 
       #creation of extra info attributes
@@ -260,35 +272,49 @@ module.exports = (env) ->
       env.logger.debug "StateHandler, state received: " + state
       env.logger.debug "StateHandler, lastKnownState received: " + JSON.stringify(lastKnownState,null,2)
 
+
       switch state
         when nukiApi.lockState.LOCKED
           env.logger.debug "State LOCKED received for '#{@id}'"
           @_setState on
           @_setLock 'locked'
+          @_setStatus 'received locked'
         when nukiApi.lockState.LOCKING
           env.logger.debug "State LOCKING received for '#{@id}'"
           @_setState on
           @_setLock 'locking'
+          @_setStatus 'received locking'
         when nukiApi.lockState.UNLOCKING
           env.logger.debug "State UNLOCKING received for '#{@id}'"
           @_setState off
           @_setLock 'unlocking'
+          @_setStatus 'received unlocking'
         when nukiApi.lockState.UNLOCKED
           env.logger.debug "State UNLOCKED received for '#{@id}'"
           @_setState off
           @_setLock 'unlocked'
+          @_setStatus 'received unlocked'
         when nukiApi.lockState.UNLATCH
           env.logger.debug "State UNLATCH received for '#{@id}'"
           @_setState off
           @_setLock 'open'
+          @_setStatus 'received open'
         when nukiApi.lockState.LOCK_N_GO
           env.logger.debug "State LOCK_N_GO received for '#{@id}'"
           @_setLock 'lock-n-go'
-        when nukiApi.lockState.LOCK_N_GO_WITH_UNLATCH
-          env.logger.debug "State LOCK_N_GO_WITH_UNLATCH received for '#{@id}'"
-          @_setLock 'lock-n-go open'
+          @_setStatus 'received lock-n-go'
+        when nukiApi.lockState.MOTOR_BLOCKED
+          env.logger.debug "State MOTOR_BLOCKED received for '#{@id}'"
+          @_setLock 'motor blocked'
+          @_setStatus 'received motor blocked', false
+        when nukiApi.lockState.UNDEFINED
+          env.logger.debug "State UNDEFINED received for '#{@id}'"
+          @_setLock 'undefined'
+          @_setStatus 'received undefined', false
         else
           env.logger.debug "Unknown State received for '#{@id}', State nr: " + state
+          @_setLock 'unknown'
+          @_setStatus "received unknown: #{state}", false
 
       if lastKnownState?.batteryCritical?
         @_setBattery lastKnownState.batteryCritical
@@ -325,6 +351,7 @@ module.exports = (env) ->
             @_setState on
             @_setLock "locked"
           .catch (err) =>
+            @_setStatus "set locked error " + err.statusCode 
             env.logger.debug "Error locking '#{@id}': " + JSON.stringify(err,null,2)
         when nukiApi.lockAction.UNLOCK
           @nuki.lockAction(nukiApi.lockAction.UNLOCK, false) #nowait
@@ -341,6 +368,7 @@ module.exports = (env) ->
     _requestUpdate: () =>
       env.logger.debug "Requesting update"
 
+      @_setStatus "requesting update" 
       @plugin.bridge.list()
       .then (list) =>
         _nuki = _.find(list,(n)=>(Number n.nukiId) == (Number @nukiId))
@@ -351,6 +379,7 @@ module.exports = (env) ->
             _state = parseInt _state
           @stateHandler {state: _state, response: _nuki}
       .catch (error) =>
+        @_setStatus "requesting update error: " + error.statusCode, false
         env.logger.error "Error requesting update: " + (error.code ? error)
       .finally () =>
         @scheduleUpdate = setTimeout(@_requestUpdate, @configInterval * 1000)
@@ -359,6 +388,7 @@ module.exports = (env) ->
     changeStateTo: (state) ->
       if state is @_state then return
       if Boolean state
+        @_setStatus "set locked" 
         @actionHandler(nukiApi.lockAction.LOCK)
         .then ()=>
           @_setLock "locked"
@@ -366,8 +396,10 @@ module.exports = (env) ->
           return Promise.resolve()
         .catch (err)=>
           env.logger.debug "Error " + err
+          @_setStatus "set locked error: " + err.statusCode, false
           return Promise.reject()
       else
+        @_setStatus "set unlocked" 
         @actionHandler(nukiApi.lockAction.UNLOCK)
         .then ()=>
           @_setLock "unlocked"
@@ -375,6 +407,7 @@ module.exports = (env) ->
           return Promise.resolve()
         .catch (err)=>
           env.logger.debug "Error " + err
+          @_setStatus "set unlocked error: " + err.statusCode, false
           return Promise.reject()
 
     getState: () -> Promise.resolve @_state
@@ -392,12 +425,26 @@ module.exports = (env) ->
       @_lock = status
       @emit 'lock', status
 
+    getStatus: () -> Promise.resolve @_status
+    _setStatus: (status, reset=true) =>
+      @_status = status
+      @emit 'status', status
+      # clear running readyTimer
+      clearTimeout(@readyTimer) if @readyTimer?
+      # reset status
+      if reset
+        @readyTimer = setTimeout(=>
+          @_status = "ready"
+          @emit "status", "ready"
+        ,3000)
+
     execute: (command, options) =>
       return new Promise((resolve,reject) =>
 
         env.logger.debug "Execute command: " + command + ", options: " + JSON.stringify(options,null,2)
         switch command
           when "lock"
+            @_setStatus "set locked" 
             env.logger.debug "Lock Nuki #{@id}"
             @nuki.lockAction(nukiApi.lockAction.LOCK, false) #nowait
             .then (resp)=>
@@ -407,9 +454,11 @@ module.exports = (env) ->
               resolve()
             .catch (err) =>
               env.logger.debug "Error locking #{@id}: " + JSON.stringify(err,null,2)
+              @_setStatus "set locked error "+err.statusCode, false
               reject()
           when "unlock"
             env.logger.debug "Unlock Nuki #{@id}"
+            @_setStatus "set unlocked" 
             @nuki.lockAction(nukiApi.lockAction.UNLOCK, false) #nowait
             .then (resp)=>
               env.logger.debug "Nuki #{@id} unlocked"
@@ -418,6 +467,7 @@ module.exports = (env) ->
               resolve()
             .catch (err) =>
               env.logger.debug "Error unlocking #{@id}: " + JSON.stringify(err,null,2)
+              @_setStatus "set unlocked error "+err.statusCode, false
               reject()
           else
             env.logger.debug "Command not implemented: " + command
